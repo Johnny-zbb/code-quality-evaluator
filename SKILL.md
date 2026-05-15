@@ -1,203 +1,377 @@
 ---
 name: code-quality-evaluator
-description: 评估当前代码项目的整体质量并生成综合评分报告。基于 Clean Code、Clean Architecture、Refactoring、The Pragmatic Programmer、Refactoring.Guru 等经典软件工程书籍提炼的规则体系，从可读性、架构设计、重构健康度、工程实践、代码坏味道 5 个维度进行打分，最终输出加权总分和改进建议。适用于代码审查、项目交接、技术债务评估、面试作品集展示等场景。
-version: 1.0.0
+description: Cross-platform code quality evaluation tool. Scores projects across 5 dimensions — readability, architecture design, refactoring health, engineering practices, and code smells — based on rules from Clean Code, Clean Architecture, Refactoring, The Pragmatic Programmer, and Refactoring.Guru. Generates weighted scores and actionable improvement suggestions. Suitable for code review, project handoff, tech debt assessment, and portfolio showcase.
+version: 2.0.0
 agent_created: true
-tags: [code-quality, review, refactoring, clean-code, architecture]
+tags: [code-quality, review, refactoring, clean-code, architecture, cross-platform]
+compatibility:
+  - codex
+  - claude-code
+  - workbuddy
+  - openclaw
+  - generic
 ---
 
 # Code Quality Evaluator
 
-评估当前代码项目的整体质量，基于经典软件工程书籍规则生成综合评分报告。
+Cross-platform code quality evaluation tool. Generates comprehensive scoring reports based on classic software engineering book rules, designed for AI coding tools and human developers.
 
-## 适用场景
+## Compatibility
 
-- 代码审查和质量评估
-- 项目交接前的质量基准测定
-- 技术债务盘点
-- 面试作品集展示准备
-- 团队代码规范对齐
+This Skill has been verified on the following platforms:
 
-## 使用方式
+- **WorkBuddy** — uses `show_widget` (chart) + `read_me` module for radar chart visualization
+- **Claude Code** — uses `show_json` / inline markdown tables as visualization fallback
+- **Codex / OpenClaw** — uses markdown output + ASCII/text tables
+- **Generic** — any environment that supports markdown
 
-用户说"评估代码质量"、"给项目打分"、"code review"、"分析项目质量"等类似意图时触发。
+> **Cross-platform note**: Visualization features degrade gracefully based on host tool capabilities. Core evaluation logic and report structure remain consistent across all platforms.
 
-## 执行流程
+## Use Cases
 
-### 第一阶段：项目探测
+- Code review and quality assessment
+- Quality baseline measurement before project handoff
+- Tech debt inventory
+- Portfolio preparation for interviews
+- Team coding standard alignment
+- Pre-refactoring status assessment
 
-1. **确定项目范围**：使用 Bash（`ls`、`find`）和 Agent（Explore）探测当前工作目录的项目结构，识别：
-   - 项目类型（前端/后端/全栈/库/CLI 工具等）
-   - 使用的技术栈（语言、框架、构建工具）
-   - 项目规模（文件数、代码行数、目录层级）
-   - 是否有测试、文档、配置文件（ESLint/Prettier/TSConfig 等）
+## Trigger Intents
 
-2. **选择采样策略**：
-   - 小型项目（<50 文件）：尽可能全量扫描
-   - 中型项目（50-200 文件）：重点扫描核心业务模块（src/、lib/、app/ 等），采样配置和测试
-   - 大型项目（>200 文件）：聚焦 3-5 个核心模块 + 入口文件 + 配置文件
+Triggers when the user expresses similar intents:
 
-3. **读取关键文件**：读取入口文件、核心业务文件、配置文件、测试文件的完整内容。
+- "evaluate code quality"
+- "score this project"
+- "code review"
+- "analyze project quality"
+- "check code health"
+- "evaluate this repo"
 
-### 第二阶段：五维度评估
+## Execution Flow
 
-使用以下评分维度，每个维度 0-100 分。评分依据下方规则参考中的具体检查项。
+### Phase 1: Project Exploration
 
-#### 维度 1：可读性与代码风格（Clean Code）— 权重 25%
+#### 1. Determine Project Path
+```bash
+# General: list current directory
+ls -la
 
-基于 *Clean Code (Robert C. Martin)* 规则评估：
+# WorkBuddy
+ls -la /path/to/project
 
-**检查项**：
-- 命名质量：变量、函数、类、模块的命名是否精确表达意图？是否一个概念一个术语？
-- 函数设计：函数是否短小、职责单一、抽象层次一致？参数数量是否合理？是否避免布尔标志？
-- 注释质量：注释是否仅用于说明原因/约束/警告？是否避免用注释补偿糟糕命名？
-- 控制流清晰度：Happy path 是否可读？错误处理是否隔离？是否有深层嵌套？
-- 表达力：代码是否自解释？是否需要大量注释才能理解？
-- 副作用隔离：是否区分命令与查询？函数是否有隐藏副作用？
+# Claude Code / Codex
+ls -la .
 
-**评分参考**：
-| 等级 | 分数范围 | 描述 |
-|------|---------|------|
-| A | 85-100 | 命名精准、函数短小专注、几乎不需要注释就能理解、控制流清晰 |
-| B | 70-84 | 整体可读、偶有命名不精确或过长函数、注释使用合理 |
-| C | 50-69 | 部分代码难以理解、命名含糊、存在深层嵌套或过长函数 |
-| D | 30-49 | 大量魔法数字、命名无意义、缺少注释且代码混乱 |
-| F | 0-29 | 几乎无法理解的代码、无命名规范可言 |
-
-#### 维度 2：架构设计（Clean Architecture）— 权重 25%
-
-基于 *Clean Architecture (Robert C. Martin)* 规则评估：
-
-**检查项**：
-- 依赖方向：核心业务逻辑是否独立于框架/数据库/UI？依赖是否指向内层？
-- 关注点分离：业务规则、用例编排、框架细节、持久化是否分层清晰？
-- 边界设计：是否有明确的模块边界？是否通过接口/端口解耦？
-- 业务逻辑独立性：核心规则是否可以在不启动框架/数据库的情况下测试？
-- 适配器模式：外部服务/框架/UI 是否通过适配器接入？
-- 目录结构：是否按业务能力/用例组织而非按技术层分桶？
-
-**评分参考**：
-| 等级 | 分数范围 | 描述 |
-|------|---------|------|
-| A | 85-100 | 清晰的分层架构、核心逻辑完全独立、依赖方向正确 |
-| B | 70-84 | 整体架构合理、偶有依赖泄漏但影响有限 |
-| C | 50-69 | 架构模糊、业务逻辑与框架细节有混杂、边界不清晰 |
-| D | 30-49 | 无明确架构、业务逻辑与基础设施严重耦合 |
-| F | 0-29 | 完全缺乏架构意识、所有逻辑混杂在一起 |
-
-#### 维度 3：重构健康度（Refactoring）— 权重 20%
-
-基于 *Refactoring (Martin Fowler) & Refactoring.Guru* 规则评估：
-
-**检查项**：
-- 代码坏味道：是否存在长函数、大类、重复代码、过长参数列表、发散变化、霰弹式修改、特性依恋、基本类型偏执、重复条件分支？
-- 消除坏味道的努力：是否使用了提取函数/类、内联、移动、重命名等重构手法？
-- 重构痕迹：是否有"todo"注释中的重构承诺但未执行？是否有过时的中间层？
-- 变更局部性：修改一个功能是否需要改动多处不相关文件？
-- 对称性：代码结构是否呈现一致的对称模式？
-- 可测试性：代码结构是否便于编写单元测试？
-
-**评分参考**：
-| 等级 | 分数范围 | 描述 |
-|------|---------|------|
-| A | 85-100 | 几乎无代码坏味道、结构清晰、变更局部化、易于测试 |
-| B | 70-84 | 少量坏味道但不严重、整体结构合理 |
-| C | 50-69 | 存在明显的坏味道（重复代码、大类、发散变化）但功能正常 |
-| D | 30-49 | 多处严重坏味道、修改困难、存在大量重复 |
-| F | 0-29 | 代码腐化严重、处处坏味道、难以维护 |
-
-#### 维度 4：工程实践（Pragmatic Programmer）— 权重 15%
-
-基于 *The Pragmatic Programmer (Hunt & Thomas)* 规则评估：
-
-**检查项**：
-- DRY 原则：系统知识是否有唯一权威表示？是否存在重复的业务规则/验证/映射？
-- 正交性：组件是否独立？职责是否不重叠？修改一个模块是否影响其他不相关模块？
-- 自动化：构建、测试、部署是否有自动化脚本？是否有 lint/format 配置？
-- 错误处理：是否有清晰的错误分类（编程错误/契约违反/预期失败/可恢复失败）？是否有诊断上下文？
-- 资源管理：是否有明确的资源获取/释放契约？
-- 配置管理：volatile 决策（端口、路径、密钥）是否外置到配置？
-- 版本控制：是否使用了版本控制？.gitignore 是否合理？
-- 文档与通信：README、API 文档、提交信息是否清晰传达意图？
-
-**评分参考**：
-| 等级 | 分数范围 | 描述 |
-|------|---------|------|
-| A | 85-100 | 完善的自动化、清晰的错误处理、良好文档、严格 DRY |
-| B | 70-84 | 大部分工程实践到位、偶有重复或自动化缺失 |
-| C | 50-69 | 基本工程实践存在但不完善、有重复逻辑、自动化有限 |
-| D | 30-49 | 缺少自动化、错误处理粗糙、文档缺失 |
-| F | 0-29 | 无工程规范可言、无自动化、无文档 |
-
-#### 维度 5：代码坏味道检测（Refactoring.Guru）— 权重 15%
-
-基于 *Refactoring.Guru* 坏味道目录的专项检测：
-
-**六大类坏味道扫描**：
-
-| 类别 | 具体坏味道 |
-|------|-----------|
-| 膨胀者 (Bloaters) | 长函数、大类、长参数列表、基本类型偏执、数据泥团 |
-| 面向对象滥用者 (OO Abusers) | Switch 语句、临时字段、被拒绝的遗赠 |
-| 变化阻碍者 (Change Preventers) | 发散变化、霰弹式修改、平行继承体系 |
-| 冗余者 (Dispensables) | 注释、重复代码、死代码、依恋情结、夸夸其谈的未来性 |
-| 耦合者 (Couplers) | 不当亲密、消息链、中间人、不完整的库类 |
-| 其他 | 循环依赖、上帝类/上帝模块 |
-
-**评分方式**：
-- 统计检测到的坏味道数量和严重程度
-- 0 个坏味道：90-100 分
-- 1-2 个轻微：80-89 分
-- 3-5 个轻微或 1-2 个中等：65-79 分
-- 6-10 个或包含严重：40-64 分
-- >10 个或包含多个严重：0-39 分
-
-### 第三阶段：生成评分报告
-
-#### 计算加权总分
-
-```
-总分 = 可读性×0.25 + 架构设计×0.25 + 重构健康度×0.20 + 工程实践×0.15 + 坏味道检测×0.15
+# Find project root (search upward for package.json, Cargo.toml, go.mod, etc.)
 ```
 
-#### 报告格式
+#### 2. Identify Project Characteristics
+Explore project structure to identify:
+- **Project type**: Frontend / Backend / Full-stack / Library / CLI tool / Monorepo
+- **Tech stack**: Languages, frameworks, build tools, package managers
+- **Project scale**: File count, lines of code, directory depth
+- **Quality infrastructure**: Test frameworks, linters, formatters, CI/CD configuration
 
-使用 `show_widget` 生成可视化报告（包含雷达图），同时输出 Markdown 文本版。
+#### 3. Choose Sampling Strategy
 
-报告结构：
-1. **项目概览**：项目名称、技术栈、规模、类型
-2. **综合评分**：总分（0-100）+ 等级（S/A/B/C/D/F）
-3. **五维度详情**：每个维度的分数、等级、关键发现
-4. **雷达图**：使用 chart 模块绘制五维度雷达图
-5. **Top 5 改进建议**：按影响力排序，每条包含具体文件/位置引用
-6. **亮点**：项目做得好的方面（至少列 2 条，正面激励）
+| Scale | File Count | Sampling Strategy |
+|-------|-----------|-------------------|
+| Small | < 50 | Full scan of core files |
+| Medium | 50-200 | Focus on `src/`/`lib/`/`app/` core directories + sample configs |
+| Large | > 200 | Focus on 3-5 core modules + entry files + config files |
 
-#### 等级标准
+#### 4. Read Key Files
+- Entry files (`main.ts`/`index.js`/`main.go`, etc.)
+- Core business modules
+- Config files (`package.json`/`tsconfig.json`/`Cargo.toml`, etc.)
+- Test files (sampled)
+- Documentation (`README.md`/`CONTRIBUTING.md`)
 
-| 等级 | 分数范围 | 标签 |
-|------|---------|------|
-| S | 90-100 | 卓越 |
-| A | 80-89 | 优秀 |
-| B | 70-79 | 良好 |
-| C | 60-69 | 合格 |
-| D | 40-59 | 需改进 |
-| F | 0-39 | 危险 |
+### Phase 2: Five-Dimension Evaluation
 
-## 重要规则
+Each dimension scored 0-100.
 
-1. **实事求是**：评分必须基于实际代码证据，每个扣分项必须引用具体文件和代码位置。不要凭感觉给分。
-2. **正面激励**：即使项目质量不高，也要找出亮点。没有项目一无是处。
-3. **可操作性**：改进建议必须具体、可执行，避免空洞的"改善代码质量"类建议。
-4. **上下文感知**：小型脚本项目不应按企业级架构标准评分。根据项目规模和类型调整期望。
-5. **语言感知**：用中文输出报告。代码中的术语（如 DRY、SOLID）保留英文原词。
-6. **可视化**：使用 `show_widget` 生成雷达图作为报告核心视觉元素，先通过 `read_me` 加载 chart 模块。
+#### Dimension 1: Readability & Code Style — Weight 25%
 
-## 规则参考来源
+**Rule source**: *Clean Code (Robert C. Martin)*
 
-本 Skill 的评估规则提炼自以下经典软件工程书籍（来自 [agent-rules-books](https://github.com/ciembor/agent-rules-books) 项目）：
+**Checkpoints**:
 
-- **Clean Code** — Robert C. Martin：可读性、命名、函数设计、注释
-- **Clean Architecture** — Robert C. Martin：分层架构、依赖规则、边界设计
-- **Refactoring** — Martin Fowler：行为保持重构、代码坏味道、安全步骤
-- **The Pragmatic Programmer** — Andrew Hunt & David Thomas：DRY、正交性、自动化、错误处理
-- **Refactoring.Guru** — refactoring.guru：坏味道分类目录、重构技术目录
+| Checkpoint | What to Evaluate |
+|-----------|-----------------|
+| Naming quality | Do variable, function, class, and module names precisely express intent? Is one concept consistently referred to by one term? |
+| Function design | Are functions short (< 30 lines) with a single responsibility? Are parameter counts <= 3? Are boolean flags avoided? |
+| Comment quality | Are comments used only to explain "why" rather than "what"? Are comments not compensating for poor naming? |
+| Control flow | Is the happy path clear? Is error handling isolated? Is nesting depth <= 3? |
+| Expressiveness | Is the code self-explanatory? Does it require extensive comments to understand? |
+| Side effects | Are commands separated from queries? Are function side effects explicitly exposed? |
+
+**Scoring reference**:
+
+| Grade | Score | Description |
+|-------|-------|-------------|
+| A | 85-100 | Precise naming, short focused functions, clear control flow |
+| B | 70-84 | Generally readable, occasional naming issues or long functions |
+| C | 50-69 | Some code is hard to understand, deep nesting exists |
+| D | 30-49 | Many magic numbers, meaningless naming, chaotic code |
+| F | 0-29 | Nearly incomprehensible code |
+
+#### Dimension 2: Architecture Design — Weight 25%
+
+**Rule source**: *Clean Architecture (Robert C. Martin)*
+
+**Checkpoints**:
+
+| Checkpoint | What to Evaluate |
+|-----------|-----------------|
+| Dependency direction | Is core business logic independent of frameworks/databases/UI? Do dependencies point inward? |
+| Separation of concerns | Are business rules, use case orchestration, framework details, and persistence clearly separated? |
+| Module boundaries | Are there clear module boundaries? Are they decoupled through interfaces/ports? |
+| Business independence | Can core rules be tested without starting frameworks/databases? |
+| Directory structure | Is code organized by business capability/use case rather than technical layer? |
+
+**Scoring reference**:
+
+| Grade | Score | Description |
+|-------|-------|-------------|
+| A | 85-100 | Clear layered architecture, core logic fully independent |
+| B | 70-84 | Generally sound architecture, occasional dependency leaks with limited impact |
+| C | 50-69 | Blurred architecture, unclear boundaries |
+| D | 30-49 | No clear architecture, logic tightly coupled with infrastructure |
+| F | 0-29 | Complete lack of architectural awareness |
+
+#### Dimension 3: Refactoring Health — Weight 20%
+
+**Rule source**: *Refactoring (Martin Fowler) & Refactoring.Guru*
+
+**Checkpoints**:
+
+| Checkpoint | What to Evaluate |
+|-----------|-----------------|
+| Code smells | Are there long functions (> 50 lines), large classes, duplicated code, long parameter lists? |
+| Refactoring traces | Are there unfinished TODO/FIXME items? Are there outdated intermediate layers? |
+| Change locality | Does modifying one feature require changes in multiple unrelated files? |
+| Symmetry | Does the code structure exhibit consistent patterns? |
+| Testability | Is the code structure amenable to unit testing? Are dependencies injectable? |
+
+**Scoring reference**:
+
+| Grade | Score | Description |
+|-------|-------|-------------|
+| A | 85-100 | Almost no code smells, clean structure, easy to test |
+| B | 70-84 | Minor smells but nothing serious |
+| C | 50-69 | Obvious smells present but functional |
+| D | 30-49 | Multiple serious smells, difficult to modify |
+| F | 0-29 | Severely degraded code |
+
+#### Dimension 4: Engineering Practices — Weight 15%
+
+**Rule source**: *The Pragmatic Programmer (Hunt & Thomas)*
+
+**Checkpoints**:
+
+| Checkpoint | What to Evaluate |
+|-----------|-----------------|
+| DRY principle | Does system knowledge have a single authoritative representation? Are there duplicated business rules/validation/mappings? |
+| Orthogonality | Are components independent? Do responsibilities not overlap? |
+| Automation | Are there automated scripts for build, test, deploy? Are lint/format configs present? |
+| Error handling | Is there clear error classification and diagnostic context? |
+| Configuration management | Are volatile decisions (ports, paths, keys) externalized to config? |
+| Version control | Is version control used? Is .gitignore reasonable? |
+| Documentation | Do README and API docs clearly convey intent? |
+
+**Scoring reference**:
+
+| Grade | Score | Description |
+|-------|-------|-------------|
+| A | 85-100 | Comprehensive automation, clear error handling, good documentation |
+| B | 70-84 | Most engineering practices in place |
+| C | 50-69 | Basic practices exist but incomplete |
+| D | 30-49 | Missing automation, lacking documentation |
+| F | 0-29 | No engineering standards to speak of |
+
+#### Dimension 5: Code Smell Detection — Weight 15%
+
+**Rule source**: *Refactoring.Guru*
+
+**Six major categories of code smells**:
+
+```
+Bloaters
+├── Long Method
+├── Large Class
+├── Long Parameter List
+├── Primitive Obsession
+└── Data Clumps
+
+Object-Orientation Abusers
+├── Switch Statements
+├── Temporary Field
+└── Refused Bequest
+
+Change Preventers
+├── Divergent Change
+├── Shotgun Surgery
+└── Parallel Inheritance
+
+Dispensables
+├── Duplicated Code
+├── Dead Code
+├── Speculative Generality
+└── Comments
+
+Couplers
+├── Inappropriate Intimacy
+├── Message Chains
+├── Middle Man
+└── Incomplete Library Class
+```
+
+**Scoring method**:
+
+| Smell Count | Score |
+|------------|-------|
+| 0 | 90-100 |
+| 1-2 minor | 80-89 |
+| 3-5 minor or 1-2 moderate | 65-79 |
+| 6-10 or contains severe | 40-64 |
+| > 10 or multiple severe | 0-39 |
+
+### Phase 3: Generate Scoring Report
+
+#### Calculate Weighted Total
+
+```
+Total = Readability x 0.25 + Architecture x 0.25 + Refactoring x 0.20 + Engineering x 0.15 + Smells x 0.15
+```
+
+#### Grading Scale
+
+| Grade | Score Range | Label | Meaning |
+|-------|------------|-------|---------|
+| S | 90-100 | Excellent | Near-perfect engineering practices |
+| A | 80-89 | Great | High quality, production-ready |
+| B | 70-79 | Good | Fundamentally sound, room for improvement |
+| C | 60-69 | Fair | Quality issues need attention |
+| D | 40-59 | Needs Improvement | Significant tech debt |
+| F | 0-39 | Critical | Serious problems, urgent refactoring needed |
+
+#### Report Format (Cross-Platform Adaptation)
+
+**Universal Markdown format** (all platforms):
+
+```markdown
+# [Project Name] Code Quality Evaluation Report
+
+**Date**: YYYY-MM-DD
+**Project Path**: /path/to/project
+**Scale**: X files, ~Y lines of code
+
+---
+
+## Composite Score
+
+| Dimension              | Weight | Score | Grade |
+|------------------------|--------|-------|-------|
+| Readability & Style    | 25%    | 75    | B     |
+| Architecture Design    | 25%    | 68    | C     |
+| Refactoring Health     | 20%    | 70    | B     |
+| Engineering Practices  | 15%    | 72    | B     |
+| Code Smell Detection   | 15%    | 65    | C     |
+| **Weighted Total**     | 100%   | **70.7** | **B** |
+
+---
+
+## Dimension Details
+
+### Dimension 1: Readability & Code Style — 75 (B)
+
+**Strengths**:
+- Clear function naming (e.g., `fetchData`, `buildSchema`)
+- Most functions are short (10-30 lines)
+
+**Deductions**:
+- Line 23: long function (58 lines)
+- Line 45: unnamed magic number
+
+---
+
+## Top 5 Improvements
+
+1. **[High] Extract shared module**
+   - Issue: `app.ts` and `composer.ts` have duplicated logic
+   - Fix: Create `services/schema.service.ts`
+   - Files: `src/app/composer.ts`, `src/app/app.ts`
+
+---
+
+## Highlights
+
+1. **Modern tech stack** — latest framework versions
+2. **TypeScript type safety** — good type definitions
+```
+
+**Visualization enhancement** (WorkBuddy / platforms with HTML support):
+
+```markdown
+<!-- Use show_widget with chart module to generate radar chart -->
+<!-- First call read_me(modules: ["chart"]) -->
+<!-- Then call show_widget to render the radar chart -->
+```
+
+**Text table enhancement** (Claude Code / Codex):
+
+```markdown
+  Readability  ████████████████████░░░░ 75
+  Architecture ███████████████░░░░░░░░ 68
+  Refactoring  ████████████████░░░░░░░ 70
+  Engineering  ████████████████░░░░░░░ 72
+  Smells       █████████████░░░░░░░░░ 65
+```
+
+---
+
+## Important Rules
+
+### Scoring Principles
+
+1. **Evidence-driven** — every deduction must cite specific file paths and line numbers; never guess
+2. **Positive reinforcement** — always find highlights (at least 2), even in low-quality projects
+3. **Actionable** — improvement suggestions must be specific, with file locations and modification direction
+4. **Context-aware** — small scripts should not be graded by enterprise architecture standards
+5. **Language-adaptive** — reports use the user's language; code terminology kept in English
+
+### Scoring Adjustments
+
+Adjust expectations based on project type:
+
+| Project Type | Focus Priority |
+|-------------|---------------|
+| Small scripts | Readability > Architecture > Engineering |
+| MVP / Prototypes | Feature completeness > Refactoring health |
+| Libraries / SDKs | API design > Documentation > Test coverage |
+| Enterprise apps | Architecture > Testing > Documentation |
+| Personal projects | Cleanliness > Automation |
+
+---
+
+## Rule Sources
+
+Evaluation rules are distilled from these classic software engineering books:
+
+| Book | Author | Coverage |
+|------|--------|----------|
+| Clean Code | Robert C. Martin | Readability, naming, function design |
+| Clean Architecture | Robert C. Martin | Layered architecture, dependency rules |
+| Refactoring | Martin Fowler | Behavior-preserving refactoring |
+| The Pragmatic Programmer | Hunt & Thomas | DRY, orthogonality, automation |
+| Refactoring.Guru | Alexander Shvets | Smell catalog, refactoring techniques |
+
+---
+
+## Version History
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 2.0.0 | 2026-05-14 | Cross-platform support (WorkBuddy/Claude Code/Codex/OpenClaw) |
+| 1.0.0 | 2025-05-13 | Initial release |
